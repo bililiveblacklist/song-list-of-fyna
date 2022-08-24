@@ -1,0 +1,579 @@
+import React, { useState, useEffect } from "react";
+
+import Head from "next/head";
+import Link from "next/link";
+import Image from "next/image";
+
+import styles from "../styles/Home.module.css";
+import "react-toastify/dist/ReactToastify.css";
+
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Table,
+  Button,
+  Offcanvas,
+} from "react-bootstrap";
+import { toast } from "react-toastify";
+import copy from "copy-to-clipboard";
+
+import MusicList from "../public/music_list_7.json";
+
+import SongDetail from "../components/SongDetail.component";
+import MandarinBtn from "../components/MandarinBtn.component";
+import PianoBtn from "../components/PianoBtn";
+import ChevronSVG from "../components/ChevronSVG.component";
+import BiliPlayerModal from "../components/BiliPlayerModal.component";
+
+import imageLoader from "../utils/ImageLoader";
+
+export default function Home() {
+  //状态保存: 类别选择, 搜索框, 回到顶部按钮, 移动端自我介绍, 试听窗口
+  const [categorySelection, setCategotySelection] = useState({
+    lang: "",
+    initial: "",
+    paid: false,
+    remark: "",
+  });
+  const [searchBox, setSearchBox] = useState("");
+  const [showToTopButton, setToTopShowButton] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
+  const [modalPlayerShow, setPlayerModalShow] = useState(false);
+  const [modalPlayerSongName, setPlayerModalSongName] = useState("");
+  const [BVID, setBVID] = useState("");
+
+  useEffect(() => {
+    //检测窗口滚动
+    window.addEventListener("scroll", () => {
+      if (window.pageYOffset > 600) {
+        setToTopShowButton(true);
+      } else {
+        setToTopShowButton(false);
+      }
+    });
+  }, []);
+
+  //根据首字母和搜索框进行过滤
+  const filteredSongList = MusicList.filter(
+    (song) =>
+      //搜索框搜歌名
+      (song.song_name
+        ?.toString()
+        .toLowerCase()
+        .includes(searchBox ? searchBox.toLowerCase() : "") ||
+        //搜索框搜语言
+        song.language
+          ?.toString()
+          .toLowerCase()
+          .includes(searchBox ? searchBox.toLowerCase() : "") ||
+        //搜索框搜备注
+        song.remarks
+          ?.toString()
+          .toLowerCase()
+          .includes(searchBox ? searchBox.toLowerCase() : "") ||
+        song.artist
+          ?.toString()
+          .toLowerCase()
+          .includes(searchBox ? searchBox.toLowerCase() : "")) &&
+      //语言过滤按钮
+      (categorySelection.lang != ""
+        ? song.language?.includes(categorySelection.lang)
+        : true) &&
+      //首字母过滤按钮
+      (categorySelection.initial != ""
+        ? song.initial?.includes(categorySelection.initial)
+        : true) &&
+      //首字母过滤按钮
+      (categorySelection.remark != ""
+        ? song.remarks?.toLowerCase().includes(categorySelection.remark)
+        : true) &&
+      //付费过滤按钮
+      (categorySelection.paid ? song.paid == 1 : true)
+  );
+
+  //处理用户复制行为
+  const handleClickToCopy = (song) => {
+    //复制到剪贴板并发送Toast
+    if (song.id.includes("paid")) {
+      //付费曲目
+      copy("点歌￥" + song.innerText);
+      // navigator.clipboard.writeText("点歌 " + songName); //如支持iOS则可替换
+      //复制成功反馈
+      toast.success(
+        `付费曲目"` +
+          song.innerText +
+          `"成功复制到剪贴板~`
+      );
+    } else {
+      //免费曲目
+      copy("点歌" + song.innerText);
+      // navigator.clipboard.writeText("点歌 " + songName); //如支持iOS则可替换
+      toast.success(`"` + song.innerText + `"成功复制到剪贴板!`);
+    }
+  };
+
+  //改变语言过滤状态
+  const setLanguageState = (lang) => {
+    setCategotySelection({ lang: lang, initial: "", paid: false, remark: "" });
+  };
+
+  //改变首字母过滤状态
+  const setInitialState = (initial) => {
+    setCategotySelection({
+      lang: "国语",
+      initial: initial,
+      paid: false,
+      remark: "",
+    });
+  };
+
+  //改变备注过滤状态
+  const setRemarkState = (remark) => {
+    setCategotySelection({
+      lang: "",
+      initial: "",
+      paid: false,
+      remark: remark,
+    });
+  };
+
+  //改变收费过滤状态
+  const setPaidState = (paid) => {
+    setCategotySelection({ lang: "", initial: "", paid: paid, remark: "" });
+  };
+
+  //随便听听
+  const handleRandomSong = () => {
+    //定位歌单
+    let parentSelector = document.querySelector(".songList");
+    //随机生成序号
+    let random = Math.floor(
+      1 + Math.random() * parentSelector.childElementCount
+    );
+    let songName_ = document.querySelector(
+      ".songList>tr:nth-child(" + random + ")"
+    ).childNodes[1];
+    if (!songName_) {
+      toast.info("歌单已经没歌了!");
+    } else if (songName_.id.includes("paid")) {
+      //如付费曲目
+      copy("点歌￥" + songName_.innerText);
+      toast.success(
+        `付费曲目"` +
+          songName_.innerText +
+          `"成功复制到剪贴板!`
+      );
+    } else {
+      //如免费曲目
+      copy("点歌" + songName_.innerText);
+      toast.success(`"` + songName_.innerText + `"成功复制到剪贴板!`);
+    }
+  };
+
+  //移动端自我介绍off canvas开关
+  const handleCloseIntro = () => setShowIntro(false);
+  const handleShowIntro = () => setShowIntro(true);
+
+  //滚动到顶部
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  return (
+    <div className={styles.outerContainer}>
+      <div className={styles.offCanvasToggleDiv} onClick={handleShowIntro}>
+        <div className={styles.cornerToggle}>
+          <Image
+            loader={imageLoader}
+            src="fynago.webp"
+            alt="打开自我介绍"
+            width={50}
+            height={50}
+          />
+          <b>
+            <i>自我介绍</i>
+          </b>
+        </div>
+      </div>
+      <Container>
+        <Head>
+          <title>法娜Fyna的歌单</title>
+          <meta
+            name="keywords"
+            content="法娜Fyna,B站,bilibili,哔哩哔哩,电台唱见,歌单"
+          />
+          <meta name="description" content="法娜Fyna的歌单" />
+          <link rel="icon" type="image/x-icon" href="/favicon.ico"></link>
+          <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/custom_icon.webp"
+          />
+        </Head>
+
+        <section className={styles.main}>
+          {/** 头像和标题 */}
+          <Row>
+            <Col className={styles.titleCol}>
+              <div className={"pt-3 " + styles.titleBox}>
+                <Image
+                  loader={imageLoader}
+                  className={styles.avatar}
+                  src="fyna.webp"
+                  alt="fyna的头像"
+                  width={250}
+                  height={250}
+                />
+                <h1
+                  className={"display-6 text-center pt-3 " + styles.grandTitle}
+                >
+                  法娜Fyna的歌单
+                </h1>
+
+                <p className="text-center py-3 mb-xl-5 text-muted">
+                  轻点歌名可以复制哦
+                </p>
+              </div>
+              <div className={styles.introBox}>
+                <div className={styles.introBoxInnerDiv}>
+                  <div className={styles.introTitle}>
+                    <h5>法娜Fyna的自我介绍</h5>
+                    <div className="d-flex">
+                      <br></br>
+                    </div>
+                  </div>
+                  <p className={styles.introParagraph}>
+                    🔍您好，尊敬的委托人，这里是法娜Fyna，来自2722年的超时空侦探！🔍隶属于ReLive_Project赋生计划
+                  </p>
+                  <p className={styles.introParagraph}>
+                  🔍好啦，正经的介绍结束啦！现在在你面前的是：
+                  </p>
+                  <p className={styles.introParagraph}>
+                  🔍2722年佩卡顿优秀探员代表
+                  </p>
+                  <p className={styles.introParagraph}>
+                  🔍2722年佩卡顿第二季度KPI最高探员
+                  </p>
+                  <p className={styles.introParagraph}>
+                  🔍2722年佩卡顿食堂阿姨最喜欢的探员评选冠军
+                  </p>
+                  <div className="d-flex flex-nowrap justify-content-evenly">
+                    <Link
+                      href="https://fyna.askvup.com"
+                      passHref
+                    >
+                      <a target="_blank">
+                        <Button
+                          className={styles.customRandomButton}
+                          style={{ marginTop: 0, border: "2px solid #DFD1E3" }}
+                        >
+                          <img
+                            className={styles.biliIcon}
+                            src="/askme.png"
+                            alt="提问箱贴图"
+                          />{" "}
+                          提问箱 <ChevronSVG />
+                        </Button>
+                      </a>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </Col>
+          </Row>
+          {/** 过滤器控件 */}
+          <Row>
+            <Col>
+              <div className={styles.categorySelectionContainer}>
+                <h5 className={styles.categorySelectionTitle}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    className="bi bi-search"
+                    viewBox="0 0 16 16"
+                    style={{ verticalAlign: "baseline" }}
+                  >
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                  </svg>{" "}
+                  挑个想听的类别呗~
+                </h5>
+                <Container fluid>
+                  <Row>
+                    <Col xs={6} md={3}>
+                      <MandarinBtn
+                        languageFilter={categorySelection.lang}
+                        initialFilter={categorySelection.initial}
+                        setLanguageState={setLanguageState}
+                        setInitialState={setInitialState}
+                      />
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.lang == "日语"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.lang == "日语"
+                              ? setLanguageState("")
+                              : setLanguageState("日语");
+                          }}
+                        >
+                          日语
+                        </Button>
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.lang == "英语"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.lang == "英语"
+                              ? setLanguageState("")
+                              : setLanguageState("英语");
+                          }}
+                        >
+                          英语
+                        </Button>
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.lang == "粤语"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.lang == "粤语"
+                              ? setLanguageState("")
+                              : setLanguageState("粤语");
+                          }}
+                        >
+                          粤语
+                        </Button>
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.lang == "韩语"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.lang == "韩语"
+                              ? setLanguageState("")
+                              : setLanguageState("韩语");
+                          }}
+                        >
+                          韩语
+                        </Button>
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+
+                      {/** 
+                                            <Button
+                          className={
+                            categorySelection.remark == "钢琴"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.remark == "钢琴"
+                              ? setRemarkState("")
+                              : setRemarkState("钢琴");
+                          }}
+                        >
+                          钢琴
+                        </Button>
+                    */}
+                        <PianoBtn
+                        remarkFilter={categorySelection.remark}
+                        setRemarkState={setRemarkState}
+                      />
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.remark == "rap"
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.remark == "rap"
+                              ? setRemarkState("")
+                              : setRemarkState("rap");
+                          }}
+                        >
+                          Rap
+                        </Button>
+                      </div>
+                    </Col>
+                    <Col xs={6} md={3}>
+                      <div className="d-grid">
+                        <Button
+                          className={
+                            categorySelection.paid
+                              ? styles.customCategoryButtonActive
+                              : styles.customCategoryButton
+                          }
+                          onClick={(e) => {
+                            categorySelection.paid
+                              ? setPaidState(false)
+                              : setPaidState(true);
+                          }}
+                        >
+                          付费
+                        </Button>
+                      </div>
+                    </Col>
+                  </Row>
+                </Container>
+              </div>
+            </Col>
+          </Row>
+          <Row>
+            <Col xs={12} md={9}>
+              <Form.Control
+                className={styles.filters}
+                type="search"
+                aria-label="搜索"
+                placeholder="搜索"
+                onChange={(e) => setSearchBox(e.target.value)}
+              />
+            </Col>
+            <Col xs={12} md={3}>
+              <div className="d-grid">
+                <Button
+                  title="从下面的歌单里随机挑一首"
+                  className={styles.customRandomButton}
+                  onClick={handleRandomSong}
+                >
+                  随便听听
+                </Button>
+              </div>
+            </Col>
+          </Row>
+          {/** 歌单表格 */}
+          <Row>
+            <Col>
+              <div className={styles.songListMarco}>
+                <Container fluid>
+                  <Table responsive>
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>歌名</th>
+                        <th></th>
+                        <th>歌手</th>
+                        <th>语言</th>
+                        <th>备注</th>
+                      </tr>
+                    </thead>
+                    <tbody className="songList">
+                      <SongDetail
+                        filteredSongList={filteredSongList}
+                        handleClickToCopy={handleClickToCopy}
+                        setBVID={setBVID}
+                        setPlayerModalShow={setPlayerModalShow}
+                        setPlayerModalSongName={setPlayerModalSongName}
+                      />
+                    </tbody>
+                  </Table>
+                </Container>
+              </div>
+            </Col>
+          </Row>
+        </section>
+        {showToTopButton ? (
+          <button
+            onClick={scrollToTop}
+            className={styles.backToTopBtn}
+            title="返回顶部"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              className="bi bi-chevron-up"
+              viewBox="0 0 16 16"
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"
+              />
+            </svg>
+          </button>
+        ) : (
+          <div></div>
+        )}
+
+      </Container>
+      <Offcanvas show={showIntro} onHide={handleCloseIntro}>
+        <Offcanvas.Header closeButton>
+          <Offcanvas.Title>法娜Fyna的自我介绍</Offcanvas.Title>
+        </Offcanvas.Header>
+        <Offcanvas.Body>
+          <p className={styles.introParagraph}>
+          您好，尊敬的委托人，这里是法娜Fyna，来自2722年的超时空侦探！隶属于ReLive_Project赋生计划！
+          </p>
+          <p className={styles.introParagraph}>
+          好啦，正经的介绍结束啦！现在在你面前的是：
+          </p>
+          <p className={styles.introParagraph}>
+          2722年佩卡顿优秀探员代表
+          </p>
+          <p className={styles.introParagraph}>
+          2722年佩卡顿第二季度KPI最高探员
+          </p>
+          <p className={styles.introParagraph}>
+          2722年佩卡顿食堂阿姨最喜欢的探员评选冠军
+          </p>
+          <Link href="https://fyna.askvup.com" passHref>
+            <a target="_blank">
+              <Button
+                className={styles.customRandomButton}
+                style={{ border: "2px solid #1D0C26", width: "100%" }}
+              >
+                <img
+                  className={styles.biliIcon}
+                  src="/askme.png"
+                  alt="提问箱贴图"
+                />{" "}
+                匿名提问箱 <ChevronSVG />
+              </Button>
+            </a>
+          </Link>
+         
+        </Offcanvas.Body>
+      </Offcanvas>
+      <BiliPlayerModal
+        show={modalPlayerShow}
+        onHide={() => setPlayerModalShow(false)}
+        BVID={BVID}
+        modalPlayerSongName={modalPlayerSongName}
+      />
+    </div>
+  );
+}
